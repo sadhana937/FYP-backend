@@ -1,0 +1,8 @@
+console.log(await deployers.getBalance());
+const [deployers] = await ethers.getSigners();
+const [deployer] = await ethers.getSigners();
+const [deployer] = await ethers.getSigner
+0x5533A027aD44BeedE0dd3E4209Bee22A2eF7c7ed
+const descriptionawait IPRegistry.registerIP(name, description);
+const name = "Sample IP";
+const IPRegistry = await ethers.getContractAt("IPregistry", "0x59f073b50519f4A47F128403c0fB024B71CcbC43");
