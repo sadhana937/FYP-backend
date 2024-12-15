@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const fs = require('fs');
 
 async function main() {
   // Get the deployer's address (the first signer from the wallet)
@@ -18,21 +19,27 @@ async function main() {
   // Log the deployed contract address
   console.log("IPRegistry contract deployed to:", ipRegistry.address);
 
-   // Register a new IP
-    console.log("Registering a new IP...");
-    const tx = await ipRegistry.registerIP("My second IP", "This is the second test IP description");
-    await tx.wait(); // Wait for the transaction to be mined
-    console.log("IP registered!");
+   // Save the deployed contract address to a JSON file
+    const address = {
+        contractAddress: ipRegistry.address,
+    };
+    fs.writeFileSync("deployments.json", JSON.stringify(address, null, 2));
 
-  // get all the registered IPs
-  const registeredIds = await ipRegistry.getIPsByOwner(deployer.address);
-    console.log("Registered IP IDs:", registeredIds);
+//    // Register a new IP
+//     console.log("Registering a new IP...");
+//     const tx = await ipRegistry.registerIP("My second IP", "This is the second test IP description");
+//     await tx.wait(); // Wait for the transaction to be mined
+//     console.log("IP registered!");
 
-        // Fetch details of the first registered IP
-    if (registeredIds.length > 0) {
-        const ipDetails = await ipRegistry.getIPDetails(registeredIds[0]);
-        console.log("Details of the first registered IP:", ipDetails);
-    }
+//   // get all the registered IPs
+//   const registeredIds = await ipRegistry.getIPsByOwner(deployer.address);
+//     console.log("Registered IP IDs:", registeredIds);
+
+//         // Fetch details of the first registered IP
+//     if (registeredIds.length > 0) {
+//         const ipDetails = await ipRegistry.getIPDetails(registeredIds[0]);
+//         console.log("Details of the first registered IP:", ipDetails);
+//     }
 
 
 }

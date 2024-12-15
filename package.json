@@ -3,6 +3,8 @@
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "dotenv": "^16.4.7",
     "ethers": "^5.7.2",
-    "hardhat": "^2.22.17"
+    "express": "^4.21.2",
+    "hardhat": "^2.22.17",
+    "prompt-sync": "^4.2.0"
   }
 }
