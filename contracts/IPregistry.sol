@@ -10,7 +10,7 @@ contract IPregistry {
         uint256 creationDate;
     }
 
-    uint256 public nextId;
+    uint256 public nextId = 0;
     mapping(uint256 => IntellectualProperty) public ips;
     mapping(address => uint256[]) public ownerToIPs;
 

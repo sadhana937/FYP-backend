@@ -21,19 +21,29 @@ async function getAllIPs() {
     const totalIPs = await ipRegistry.nextId();
     console.log(`Total IPs registered: ${totalIPs}`);
 
-    // Fetch and log the details of all registered IPs
-    for (let i = 0; i < totalIPs; i++) {
-        const ipDetails = await ipRegistry.getIPDetails(i);
-        console.log(`IP ID: ${ipDetails.id}`);
-        console.log(`Name: ${ipDetails.name}`);
-        console.log(`Description: ${ipDetails.description}`);
-        console.log(`Owner: ${ipDetails.owner}`);
-        console.log(`Creation Date: ${new Date(ipDetails.creationDate * 1000).toLocaleString()}`);
-        console.log("====================================");
-    }
-}
+    const allIPs = [];
+        for (let i = 0; i < totalIPs; i++) {
+            const ipDetails = await ipRegistry.getIPDetails(i);
+            allIPs.push({
+                id: ipDetails.id.toString(),
+                name: ipDetails.name,
+                description: ipDetails.description,
+                owner: ipDetails.owner,
+                creationDate: new Date(ipDetails.creationDate * 1000).toLocaleString(),
+            });
+        }
+        console.log(allIPs);
 
-getAllIPs().catch((error) => {
-    console.error(error);
-    process.exit(1);
-});
+        return allIPs;
+        
+    }
+
+    // // Function call
+    // getAllIPs().catch((error) => {
+    // console.error(error);
+    // process.exit(1);
+    // });
+
+// Export the function
+module.exports = getAllIPs;
+

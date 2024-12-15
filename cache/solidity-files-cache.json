@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "C:\\Users\\sadha\\OneDrive\\Desktop\\avalanche\\contracts\\IPregistry.sol": {
-      "lastModificationDate": 1734009824038,
-      "contentHash": "c0ac20cbae0c6ea3540b2cfc2001f1b1",
+      "lastModificationDate": 1734265871358,
+      "contentHash": "57c5cf7766c2eb3a82d4b713a5d041d3",
       "sourceName": "contracts/IPregistry.sol",
       "solcConfig": {
         "version": "0.8.0",
