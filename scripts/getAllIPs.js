@@ -38,11 +38,11 @@ async function getAllIPs() {
         
     }
 
-    // // Function call
-    // getAllIPs().catch((error) => {
-    // console.error(error);
-    // process.exit(1);
-    // });
+    // Function call
+    getAllIPs().catch((error) => {
+    console.error(error);
+    process.exit(1);
+    });
 
 // Export the function
 module.exports = getAllIPs;

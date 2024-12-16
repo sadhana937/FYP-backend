@@ -25,22 +25,6 @@ async function main() {
     };
     fs.writeFileSync("deployments.json", JSON.stringify(address, null, 2));
 
-//    // Register a new IP
-//     console.log("Registering a new IP...");
-//     const tx = await ipRegistry.registerIP("My second IP", "This is the second test IP description");
-//     await tx.wait(); // Wait for the transaction to be mined
-//     console.log("IP registered!");
-
-//   // get all the registered IPs
-//   const registeredIds = await ipRegistry.getIPsByOwner(deployer.address);
-//     console.log("Registered IP IDs:", registeredIds);
-
-//         // Fetch details of the first registered IP
-//     if (registeredIds.length > 0) {
-//         const ipDetails = await ipRegistry.getIPDetails(registeredIds[0]);
-//         console.log("Details of the first registered IP:", ipDetails);
-//     }
-
 
 }
 

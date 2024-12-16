@@ -52,9 +52,9 @@ contract IPregistry {
         emit OwnershipTransferred(id, msg.sender, newOwner);
     }
 
-    function getIPsByOwner(address owner) public view returns (uint256[] memory) {
-        return ownerToIPs[owner];
-    }
+    // function getIPsByOwner(address owner) public view returns (uint256[] memory) {
+    //     return ownerToIPs[owner];
+    // }
 
     function getIPDetails(uint256 id) public view returns (IntellectualProperty memory) {
         return ips[id];
