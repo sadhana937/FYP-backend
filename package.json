@@ -8,6 +8,7 @@
     "ethers": "^5.7.2",
     "express": "^4.21.2",
     "hardhat": "^2.22.17",
+    "mongoose": "^8.9.0",
     "natural": "^8.0.1",
     "prompt-sync": "^4.2.0",
     "uuid": "^11.0.3"

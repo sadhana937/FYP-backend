@@ -3,7 +3,8 @@ const express = require("express");
 const { ethers } = require("ethers");
 const natural = require("natural"); // For text tokenization
 const cosineSimilarity = require("cosine-similarity"); 
-// const mongoose = require("mongoose"); // Mongoose for MongoDB connection
+const mongoose = require("mongoose"); // Mongoose for MongoDB connection
+const IntellectualProperty = require("./models/IntellectualProperty"); // Import the IntellectualProperty model
 
 
 
@@ -14,15 +15,21 @@ app.use(require("cors")());
 const RPC_URL = process.env.INFURA_URL;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const CONTRACT_ADDRESS = process.env.CONTRACT_URL;
-// const MONGODB_URI = process.env.MONGODB_URI; // MongoDB URI from .env file
+const MONGODB_URI = process.env.MONGODB_URI; // MongoDB URI from .env file
 
 
-if (!RPC_URL || !PRIVATE_KEY || !CONTRACT_ADDRESS) {
-    throw new Error("Please set RPC_URL, PRIVATE_KEY, and CONTRACT_ADDRESS in .env file");
+if (!RPC_URL || !PRIVATE_KEY || !CONTRACT_ADDRESS || !MONGODB_URI) {
+    throw new Error("Please set RPC_URL, PRIVATE_KEY, CONTRACT_ADDRESS, and MONGODB_URI in .env file");
 }
 
 // Load Contract ABI
 const CONTRACT_ABI = require("./IPRegistry.json").abi;
+
+// Connect to MongoDB
+mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log("Connected to MongoDB"))
+    .catch(err => console.error("Failed to connect to MongoDB", err));
+
 
 // Initialize Provider, Wallet, and Contract
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
@@ -164,6 +171,22 @@ app.post("/register-ip", async (req, res) => {
             optionalFields
         );
         await tx.wait();
+
+        // Save the IP to MongoDB
+        const ipData = new IntellectualProperty({
+            index: id,
+            name,
+            description,
+            owner: ownerDetails,
+            ipType,
+            dateOfCreation,
+            dateOfRegistration,
+            license,
+            tags,
+            optionalFields
+        });
+        await ipData.save();
+
         res.status(200).json({ message: "IP registered successfully", txHash: tx.hash });
     } catch (err) {
         console.error(err);
@@ -171,29 +194,10 @@ app.post("/register-ip", async (req, res) => {
     }
 });
 
-// Endpoint to get all IPs
+// Endpoint to get all IPs from MongoDB
 app.get("/get-all-ips", async (req, res) => {
     try {
-        // Get the total number of registered IPs
-        const totalIPs = await contract.getTotalIPs();
-        const allIPs = [];
-
-        for (let i = 0; i < totalIPs; i++) {
-            //const id = await contract.getIPIdByIndex(i);
-            const ipDetails = await contract.getIPDetails(i);
-            allIPs.push({
-                id: ipDetails.id,
-                name: ipDetails.name,
-                description: ipDetails.description,
-                owner: ipDetails.owner,
-                ipType: ipDetails.ipType,
-                dateOfCreation: new Date(ipDetails.creationDate * 1000).toLocaleString(),
-                dateOfRegistration: new Date(ipDetails.registrationDate * 1000).toLocaleString(),
-                license: ipDetails.license,
-                tags: ipDetails.tags,
-                optionalFields: ipDetails.optionalFields
-            });
-        }
+        const allIPs = await IntellectualProperty.find(); // Get all IPs from MongoDB
         res.status(200).json(allIPs);
     } catch (err) {
         console.error(err);
