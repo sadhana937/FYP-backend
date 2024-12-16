@@ -3,6 +3,7 @@ const express = require("express");
 const { ethers } = require("ethers");
 const natural = require("natural"); // For text tokenization
 const cosineSimilarity = require("cosine-similarity"); 
+// const { v4: uuidv4 } = require('uuid');
 
 
 const app = express();
@@ -17,10 +18,10 @@ if (!RPC_URL || !PRIVATE_KEY || !CONTRACT_ADDRESS) {
     throw new Error("Please set RPC_URL, PRIVATE_KEY, and CONTRACT_ADDRESS in .env file");
 }
 
-// // Load Contract ABI
+// Load Contract ABI
 const CONTRACT_ABI = require("./IPRegistry.json").abi;
 
-// // Initialize Provider, Wallet, and Contract
+// Initialize Provider, Wallet, and Contract
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
@@ -63,7 +64,7 @@ const calculateCosineSimilarity = (description1, description2) => {
 
 // Function to check if the new description is similar to any registered IP
 const checkDescriptionSimilarity = async (newDescription) => {
-    const totalIPs = await contract.nextId();
+    const totalIPs = await contract.getTotalIPs();
     for (let i = 0; i < totalIPs; i++) {
         const existingIP = await contract.getIPDetails(i);
         const existingDescription = existingIP.description;
@@ -83,11 +84,20 @@ const getIPById = async (id) => {
             return { error: "IP not found" };
         }
         return {
-            id: ipDetails.id.toString(),
+            id: ipDetails.id,
             name: ipDetails.name,
             description: ipDetails.description,
-            owner: ipDetails.owner,
-            creationDate: new Date(ipDetails.creationDate * 1000).toLocaleString(),
+            owner: {
+                name: ipDetails.owner.name,
+                email: ipDetails.owner.email,
+                address: ipDetails.owner.address
+            },
+            ipType: ipDetails.ipType,
+            dateOfCreation: new Date(ipDetails.creationDate * 1000).toLocaleString(),
+            dateOfRegistration: new Date(ipDetails.registrationDate * 1000).toLocaleString(),
+            license: ipDetails.license,
+            tags: ipDetails.tags,
+            optionalFields: ipDetails.optionalFields
         };
     } catch (err) {
         console.error(err);
@@ -98,7 +108,7 @@ const getIPById = async (id) => {
 // Function to search an IP by Description or Keyword
 const searchIPByDescription = async (keyword) => {
     try {
-        const totalIPs = await contract.nextId();
+        const totalIPs = await contract.getTotalIPs();
         const matchingIPs = [];
 
         for (let i = 0; i < totalIPs; i++) {
@@ -108,7 +118,7 @@ const searchIPByDescription = async (keyword) => {
             // Check for substring match
             if (description.includes(keyword.toLowerCase())) {
                 matchingIPs.push({
-                    id: ipDetails.id.toString(),
+                    id: ipDetails.id,
                     name: ipDetails.name,
                     description: ipDetails.description,
                     owner: ipDetails.owner,
@@ -123,20 +133,33 @@ const searchIPByDescription = async (keyword) => {
     }
 };
 
-
 // Routes
 // Endpoint to register an IP
 app.post("/register-ip", async (req, res) => {
-    const { name, description } = req.body;
-    if (!name || !description) {
-        return res.status(400).json({ error: "Name and description are required" });
+    const {name, description, ipType, dateOfCreation, dateOfRegistration, license, tags,ownerDetails, optionalFields } = req.body;
+    if (!name || !description || !ownerDetails || !ipType || !dateOfCreation || !dateOfRegistration || !license) {
+        return res.status(400).json({ error: "All required fields must be provided" });
     }
 
     try {
-         // Check for similarity before registering
+        // Check for similarity before registering
         await checkDescriptionSimilarity(description);
 
-        const tx = await contract.registerIP(name, description);
+        // Using the total number of IPs as the new ID index
+        const id = await contract.getTotalIPs();
+        // const { name, email, physicalAddress } = ipData.ownerDetails;
+
+        const tx = await contract.registerIP(
+            name, 
+            description, 
+            ipType, 
+            dateOfCreation, 
+            dateOfRegistration, 
+            license, 
+            tags, 
+            ownerDetails,
+            optionalFields
+        );
         await tx.wait();
         res.status(200).json({ message: "IP registered successfully", txHash: tx.hash });
     } catch (err) {
@@ -148,21 +171,25 @@ app.post("/register-ip", async (req, res) => {
 // Endpoint to get all IPs
 app.get("/get-all-ips", async (req, res) => {
     try {
-
-         // Get the total number of registered IPs (nextId will give us the total number of IPs)
-        const totalIPs = await contract.nextId();
-        console.log(`Total IPs registered: ${totalIPs}`);
-
+        // Get the total number of registered IPs
+        const totalIPs = await contract.getTotalIPs();
         const allIPs = [];
-            for (let i = 0; i < totalIPs; i++) {
-                const ipDetails = await contract.getIPDetails(i);
-                allIPs.push({
-                    id: ipDetails.id.toString(),
-                    name: ipDetails.name,
-                    description: ipDetails.description,
-                    owner: ipDetails.owner,
-                    creationDate: new Date(ipDetails.creationDate * 1000).toLocaleString(),
-                });
+
+        for (let i = 0; i < totalIPs; i++) {
+            //const id = await contract.getIPIdByIndex(i);
+            const ipDetails = await contract.getIPDetails(i);
+            allIPs.push({
+                id: ipDetails.id,
+                name: ipDetails.name,
+                description: ipDetails.description,
+                owner: ipDetails.owner,
+                ipType: ipDetails.ipType,
+                dateOfCreation: new Date(ipDetails.creationDate * 1000).toLocaleString(),
+                dateOfRegistration: new Date(ipDetails.registrationDate * 1000).toLocaleString(),
+                license: ipDetails.license,
+                tags: ipDetails.tags,
+                optionalFields: ipDetails.optionalFields
+            });
         }
         res.status(200).json(allIPs);
     } catch (err) {
@@ -171,12 +198,10 @@ app.get("/get-all-ips", async (req, res) => {
     }
 });
 
-
-// Endpoint to search an IP by ID
 // Endpoint to search an IP by ID
 app.get("/search-ip/:id", async (req, res) => {
     const { id } = req.params;
-    const n = await contract.nextId();
+    const n = await contract.getTotalIPs();
     
     // Ensure the ID is a valid number
     if (isNaN(id) || id < 0 || id > n) {
@@ -198,7 +223,7 @@ app.get("/search-ip/:id", async (req, res) => {
     }
 });
 
-// Endpoint to search an IP by Description or Keyword
+// Endpoint to search an IP by Keyword
 app.get("/search-ip-by-description/:keyword", async (req, res) => {
     const { keyword } = req.params;
     const result = await searchIPByDescription(keyword);
@@ -207,26 +232,36 @@ app.get("/search-ip-by-description/:keyword", async (req, res) => {
 
 // Route to transfer ownership of an IP
 app.post("/transfer-ownership", async (req, res) => {
-    const { id, newOwner } = req.body;
+    const { id, newOwnerAddress, newOwnerDetails } = req.body;
 
-    if (!id || !newOwner) {
-        return res.status(400).json({ error: "ID and newOwner are required" });
+    // Validate the input
+    if (!id || !newOwnerAddress || !newOwnerDetails || !newOwnerDetails.name || !newOwnerDetails.email) {
+        return res.status(400).json({ error: "ID, newOwnerAddress, and newOwnerDetails are required" });
     }
 
     // Check if the newOwner address is valid
-    if (!ethers.utils.isAddress(newOwner)) {
+    if (!ethers.utils.isAddress(newOwnerAddress)) {
         return res.status(400).json({ error: "Invalid newOwner address" });
     }
 
     try {
         // Interact with the smart contract to transfer ownership
-        const tx = await contract.transferOwnership(id, newOwner);
-        
+        const tx = await contract.transferOwnership(id, newOwnerAddress, newOwnerDetails.name, newOwnerDetails.email, newOwnerDetails.physicalAddress);
+
         // Wait for the transaction to be mined
         await tx.wait();
-        
-        // Return the response
-        res.status(200).json({ message: "Ownership transferred successfully", txHash: tx.hash });
+
+        // Return the response with the new owner details
+        res.status(200).json({
+            message: "Ownership transferred successfully",
+            txHash: tx.hash,
+            newOwner: {
+                address: newOwnerAddress,
+                name: newOwnerDetails.name,
+                email: newOwnerDetails.email,
+                physicalAddress: newOwnerDetails.physicalAddress || "Not provided"
+            }
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to transfer ownership" });
