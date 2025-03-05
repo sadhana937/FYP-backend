@@ -5,8 +5,6 @@ const natural = require("natural"); // For text tokenization
 const cosineSimilarity = require("cosine-similarity"); 
 // const mongoose = require("mongoose"); // Mongoose for MongoDB connection
 
-
-
 const app = express();
 app.use(express.json());
 app.use(require("cors")());

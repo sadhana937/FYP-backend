@@ -25,12 +25,16 @@ contract IPregistry {
         string dateOfCreation;
         string dateOfRegistration;
         string[] license;
+        // add license incentive i.e if a user needs to access the IP, they need to pay a certain amount
+        uint256 licenseIncentive;
         string[] tags;
         OptionalFields optionalFields;
+        address ownerAddress;
     }
 
     mapping(uint256 => IntellectualProperty) public ips;
     mapping(address => uint256[]) public ownerToIPs;
+    mapping(uint256 => mapping(address => bool)) public hasAccess;
     uint256[] private allIPIndexes;
 
     event IPRegistered(
@@ -45,6 +49,18 @@ contract IPregistry {
         address indexed to
     );
 
+    event AccessGranted(
+        uint256 indexed index,
+        address indexed user,
+        uint256 amount
+    );
+
+    event IncentivePaid(
+        uint256 indexed index,
+        address indexed payer,
+        uint256 amount
+    );
+
     function registerIP(
         string memory name,
         string memory description,
@@ -52,6 +68,7 @@ contract IPregistry {
         string memory dateOfCreation,
         string memory dateOfRegistration,
         string[] memory license,
+        uint256 licenseIncentive,
         string[] memory tags,
         OwnerDetails memory ownerDetails,
         OptionalFields memory optionalFields
@@ -66,16 +83,20 @@ contract IPregistry {
             ipType: ipType,
             dateOfCreation: dateOfCreation,
             dateOfRegistration: dateOfRegistration,
-            license: license,
+            license: license, 
+            licenseIncentive: licenseIncentive,
             tags: tags,
-            optionalFields: optionalFields
-        });
+            optionalFields: optionalFields,
+            ownerAddress: msg.sender // set the owner
+        }); 
 
         ownerToIPs[msg.sender].push(newIndex);
         allIPIndexes.push(newIndex); // Add the new IP ID to the global list
 
         emit IPRegistered(newIndex, name, msg.sender, dateOfRegistration);
     }
+
+     
 
     function transferOwnership(
     uint256 index,
@@ -85,11 +106,6 @@ contract IPregistry {
     string memory newOwnerPhysicalAddress
 ) public {
     require(index < allIPIndexes.length, "IP does not exist");
-    // require(
-    //     keccak256(abi.encodePacked(ips[index].owner.name)) == keccak256(abi.encodePacked(msg.sender)),
-    //     "Not the current owner"
-    // );
-    // require(msg.sender == ips[index].newOwner, "Not the current owner");
     require(newOwner != address(0), "Invalid new owner");
 
     // Remove IP from the current owner's list
@@ -114,6 +130,30 @@ contract IPregistry {
 
     // Emit OwnershipTransferred event
     emit OwnershipTransferred(index, msg.sender, newOwner);
+}
+
+function grantAccess(uint256 index) public payable {
+    // Check if the IP with the given index exists
+    require(index < allIPIndexes.length, "IP does not exist");
+
+    // Retrieve the IP details from the mapping
+    IntellectualProperty storage ip = ips[index];
+
+    // Ensure the payment sent with the transaction is at least the required license incentive
+    require(msg.value >= ip.licenseIncentive, "Insufficient payment");
+
+    // Ensure the user does not already have access to this IP
+    require(!hasAccess[index][msg.sender], "Already has access");
+
+    // Grant access to the user by updating the hasAccess mapping
+    hasAccess[index][msg.sender] = true;
+
+    // Transfer the payment to the owner of the IP
+    address payable ownerAddress = payable(msg.sender); // This line should be corrected to transfer to the actual owner
+    ownerAddress.transfer(msg.value);
+
+    // Emit an event to log the access grant
+    emit AccessGranted(index, msg.sender, msg.value);
 }
 
     function getIPDetails(uint256 index) public view returns (IntellectualProperty memory) {
@@ -141,4 +181,7 @@ contract IPregistry {
         }
         return ipList;
     }
+        
+    
 }
+

@@ -107,6 +107,7 @@ const getIPById = async (id) => {
             dateOfCreation: new Date(ipDetails.creationDate * 1000).toLocaleString(),
             dateOfRegistration: new Date(ipDetails.registrationDate * 1000).toLocaleString(),
             license: ipDetails.license,
+            licenseIncentive: ipDetails.licenseIncentive,
             tags: ipDetails.tags,
             optionalFields: ipDetails.optionalFields
         };
@@ -147,8 +148,9 @@ const searchIPByDescription = async (keyword) => {
 // Routes
 // Endpoint to register an IP
 app.post("/register-ip", async (req, res) => {
-    const {name, description, ipType, dateOfCreation, dateOfRegistration, license, tags,ownerDetails, optionalFields } = req.body;
-    if (!name || !description || !ownerDetails || !ipType || !dateOfCreation || !dateOfRegistration || !license) {
+        console.log(req.body);
+    const {name, description, ipType, dateOfCreation, dateOfRegistration, license, licenseIncentive, tags,ownerDetails, optionalFields } = req.body;
+    if (!name || !description || !ownerDetails || !ipType || !dateOfCreation || !dateOfRegistration || !license || !licenseIncentive) {
         return res.status(400).json({ error: "All required fields must be provided" });
     }
 
@@ -166,11 +168,13 @@ app.post("/register-ip", async (req, res) => {
             dateOfCreation, 
             dateOfRegistration, 
             license, 
+            licenseIncentive,
             tags, 
             ownerDetails,
             optionalFields
         );
-        await tx.wait();
+        const receipt = await tx.wait();
+        const ownerAddress = receipt.from;
 
         // Save the IP to MongoDB
         const ipData = new IntellectualProperty({
@@ -182,8 +186,10 @@ app.post("/register-ip", async (req, res) => {
             dateOfCreation,
             dateOfRegistration,
             license,
+            licenseIncentive,
             tags,
-            optionalFields
+            optionalFields,
+            ownerAddress
         });
         await ipData.save();
 
@@ -240,9 +246,9 @@ app.get("/search-ip-by-description/:keyword", async (req, res) => {
 // Route to transfer ownership of an IP
 app.post("/transfer-ownership", async (req, res) => {
     const { id, newOwnerAddress, newOwnerDetails } = req.body;
-
+    console.log(req.body);
     // Validate the input
-    if (!id || !newOwnerAddress || !newOwnerDetails || !newOwnerDetails.name || !newOwnerDetails.email) {
+    if (!newOwnerAddress || !newOwnerDetails.name || !newOwnerDetails.email) {
         return res.status(400).json({ error: "ID, newOwnerAddress, and newOwnerDetails are required" });
     }
 
@@ -259,7 +265,7 @@ app.post("/transfer-ownership", async (req, res) => {
         await tx.wait();
 
         // Return the response with the new owner details
-        res.status(200).json({
+        res.status(200).json({ 
             message: "Ownership transferred successfully",
             txHash: tx.hash,
             newOwner: {
@@ -270,8 +276,35 @@ app.post("/transfer-ownership", async (req, res) => {
             }
         });
     } catch (err) {
-        console.error(err);
+        console.error("Error transferring ownership:", err);
         res.status(500).json({ error: "Failed to transfer ownership" });
+    }
+});
+
+// Route to pay incentive and access IP
+app.post("/access-ip", async (req, res) => {
+    try {
+        console.log(req.body);
+        const { id, incentiveAmount } = req.body;
+
+        // Validate the input
+        if (!id || !incentiveAmount) {
+            return res.status(400).json({ error: "ID and incentiveAmount are required" });
+        }
+
+        // Convert the incentive amount to Wei
+        const value = ethers.utils.parseEther(incentiveAmount.toString());
+
+        // Send the transaction with the value
+        const tx = await contract.grantAccess(id, { value });
+
+        // Wait for the transaction to be mined
+        await tx.wait();
+
+        res.status(200).json({ message: "Access granted upon incentive payment", txHash: tx.hash });
+    } catch (err) {
+        console.error("Error accessing IP:", err);
+        res.status(500).json({ error: "Failed to access IP" });
     }
 });
 
@@ -279,3 +312,4 @@ app.post("/transfer-ownership", async (req, res) => {
 // Start the Server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server is running at http://localhost:${PORT}`));
+ 

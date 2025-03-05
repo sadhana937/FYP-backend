@@ -15,6 +15,7 @@ const IntellectualPropertySchema = new Schema({
     dateOfCreation: { type: String, required: true },
     dateOfRegistration: { type: String, required: true },
     license: [{ type: String }],
+    licenseIncentive: [{type:Number}],
     tags: [{ type: String }],
     optionalFields: {
         workType: { type: String },
@@ -22,11 +23,12 @@ const IntellectualPropertySchema = new Schema({
         inventors: [{ type: String }],
         domainName: { type: String },
         publicationDate: { type: String }
-    }
+    },
+    ownerAddress: { type: String, required: true },
 });
 
 // Create a model based on the schema
-const IntellectualProperty = mongoose.model("IntellectualProperty", IntellectualPropertySchema);
+const IntellectualProperty = mongoose.model("IntellectualPropertyTable", IntellectualPropertySchema);
 
 // Export the model
 module.exports = IntellectualProperty;
