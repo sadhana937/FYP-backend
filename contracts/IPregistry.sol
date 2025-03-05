@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
-contract IPregistry {
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+contract IPregistry is ReentrancyGuard {
     struct OwnerDetails {
         string name;
         string email;
@@ -132,7 +134,7 @@ contract IPregistry {
     emit OwnershipTransferred(index, msg.sender, newOwner);
 }
 
-function grantAccess(uint256 index) public payable {
+function grantAccess(uint256 index) public payable nonReentrant {
     // Check if the IP with the given index exists
     require(index < allIPIndexes.length, "IP does not exist");
 

@@ -288,7 +288,7 @@ app.post("/access-ip", async (req, res) => {
         const { id, incentiveAmount } = req.body;
 
         // Validate the input
-        if (!id || !incentiveAmount) {
+        if (!incentiveAmount) {
             return res.status(400).json({ error: "ID and incentiveAmount are required" });
         }
 
