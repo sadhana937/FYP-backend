@@ -148,7 +148,7 @@ const searchIPByDescription = async (keyword) => {
 // Routes
 // Endpoint to register an IP
 app.post("/register-ip", async (req, res) => {
-        console.log(req.body);
+        // console.log(req.body);
     const {name, description, ipType, dateOfCreation, dateOfRegistration, license, licenseIncentive, tags,ownerDetails, optionalFields } = req.body;
     if (!name || !description || !ownerDetails || !ipType || !dateOfCreation || !dateOfRegistration || !license || !licenseIncentive) {
         return res.status(400).json({ error: "All required fields must be provided" });
@@ -218,7 +218,8 @@ app.get("/search-ip/:id", async (req, res) => {
     
     // Ensure the ID is a valid number
     if (isNaN(id) || id < 0 || id > n) {
-        return res.status(400).json({ error: "Invalid ID format" });
+        return res.status(400)
+        .json({ error: "Invalid ID format" });
     }
 
     try {
