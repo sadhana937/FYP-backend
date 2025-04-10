@@ -309,6 +309,51 @@ app.post("/access-ip", async (req, res) => {
     }
 });
 
+// Endpoint to get all IPs registered by a specific owner address
+app.get("/get-ips-by-owner/:ownerAddress", async (req, res) => {
+    const { ownerAddress } = req.params;
+
+    // Validate Ethereum address
+    if (!ethers.utils.isAddress(ownerAddress)) {
+        return res.status(400).json({ error: "Invalid Ethereum address" });
+    }
+
+    try {
+        const totalIPs = await contract.getTotalIPs();
+        // Console.log("Total IPs:", totalIPs.toString());
+        const ownedIPs = [];
+
+        for (let i = 0; i < totalIPs; i++) { 
+            const ipDetails = await contract.getIPDetails(i);
+            // Console.log("IP Details:", ipDetails);
+            if (ipDetails.owner &&
+    ipDetails.ownerAddress && ipDetails.ownerAddress.toLowerCase() === ownerAddress.toLowerCase()) {
+                ownedIPs.push({
+                    id: ipDetails.id,
+                    name: ipDetails.name,
+                    description: ipDetails.description,
+                    ipType: ipDetails.ipType,
+                    license: ipDetails.license,
+                    tags: ipDetails.tags,
+                    dateOfCreation: new Date(ipDetails.creationDate * 1000).toLocaleString(),
+                    dateOfRegistration: new Date(ipDetails.registrationDate * 1000).toLocaleString(),
+                    optionalFields: ipDetails.optionalFields,
+                    owner: ipDetails.owner
+                });
+            }
+        }
+
+        if (ownedIPs.length === 0) {
+            return res.status(404).json({ error: "No IPs found for the given owner address" });
+        }
+
+        res.status(200).json(ownedIPs);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch IPs by owner address" });
+    }
+});
+
 
 // Start the Server
 const PORT = process.env.PORT || 3000;

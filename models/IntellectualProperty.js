@@ -15,7 +15,7 @@ const IntellectualPropertySchema = new Schema({
     dateOfCreation: { type: String, required: true },
     dateOfRegistration: { type: String, required: true },
     license: [{ type: String }],
-    licenseIncentive: [{type:Number}],
+    licenseIncentive: {type:Number},
     tags: [{ type: String }],
     optionalFields: {
         workType: { type: String },
