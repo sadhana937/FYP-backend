@@ -132,13 +132,17 @@ const searchIPByDescription = async (keyword) => {
         const matchingIPs = [];
 
         for (let i = 0; i < totalIPs; i++) {
-            const ipDetails = await contract.getIPDetails(i);
+            const bigNumberId = BigNumber.from(i); // convert to BigNumber
+
+            const ipDetails = await contract.getIPDetails(bigNumberId);
+            console.log("IP Details from smart contract:", ipDetails);
+            console.log("ID inside searchIPByDescription:", ipDetails.index.toNumber());
             const description = ipDetails.description.toLowerCase();
             
             // Check for substring match
             if (description.includes(keyword.toLowerCase())) {
                 matchingIPs.push({
-                    id: ipDetails.id,
+                    id: ipDetails.index.toNumber(),
                     name: ipDetails.name,
                     description: ipDetails.description,
                     owner: ipDetails.owner,
@@ -157,8 +161,8 @@ const searchIPByDescription = async (keyword) => {
 // Endpoint to register an IP
 app.post("/register-ip", async (req, res) => {
         // console.log(req.body);
-    const {name, description, ipType, dateOfCreation, dateOfRegistration, license, licenseIncentive, tags,ownerDetails, optionalFields } = req.body;
-    if (!name || !description || !ownerDetails || !ipType || !dateOfCreation || !dateOfRegistration || !license || !licenseIncentive) {
+    const {name, description, ipType, dateOfCreation, dateOfRegistration, license, licenseIncentive, tags,owner, optionalFields } = req.body;
+    if (!name || !description || !owner || !ipType || !dateOfCreation || !dateOfRegistration || !license || !licenseIncentive) {
         return res.status(400).json({ error: "All required fields must be provided" });
     }
 
@@ -180,7 +184,7 @@ app.post("/register-ip", async (req, res) => {
             license, 
             licenseIncentive,
             tags, 
-            ownerDetails,
+            owner,
             optionalFields
         );
         const receipt = await tx.wait();
@@ -191,7 +195,7 @@ app.post("/register-ip", async (req, res) => {
             index: id,
             name,
             description,
-            owner: ownerDetails,
+            owner: owner,
             ipType,
             dateOfCreation,
             dateOfRegistration,
@@ -224,8 +228,10 @@ app.get("/get-all-ips", async (req, res) => {
 // Endpoint to search an IP by ID
 app.get("/search-ip/:id", async (req, res) => {
     const { id } = req.params;
+    console.log("ID received:", id);
+
     const n = await contract.getTotalIPs();
-    
+    console.log("Total IPs:", n);
     // // Ensure the ID is a valid number
     // if (isNaN(id) || id < 0 || id > n) {
     //     return res.status(400)
@@ -236,7 +242,7 @@ app.get("/search-ip/:id", async (req, res) => {
 
     // console.log("ID inside search IP:", id);
     // Ensure the ID is a valid number
-    if (isNaN(id) || id < 0 || id > n) {
+    if (isNaN(id) || id < 0 || id > n.toNumber()) {
         return res.status(400)
         .json({ error: "Invalid ID format" });
     }
@@ -307,8 +313,10 @@ app.post("/transfer-ownership", async (req, res) => {
 // Route to pay incentive and access IP
 app.post("/access-ip", async (req, res) => {
     try {
+    
         const { id } = req.body;
-        console.log(req.body);
+        // console.log("Received ID:", id);
+        // console.log("Inside access IP:", req.body);
         // Validate the input
         // if (!incentiveAmount) {
         //     return res.status(400).json({ error: "ID and incentiveAmount are required" });
