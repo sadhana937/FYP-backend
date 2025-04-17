@@ -5,7 +5,7 @@ const natural = require("natural"); // For text tokenization
 const cosineSimilarity = require("cosine-similarity"); 
 const mongoose = require("mongoose"); // Mongoose for MongoDB connection
 const IntellectualProperty = require("./models/IntellectualProperty"); // Import the IntellectualProperty model
-
+const { BigNumber } = require("ethers"); // Make sure this import exists
 
 
 const app = express();
@@ -90,24 +90,32 @@ const checkDescriptionSimilarity = async (newDescription) => {
 // Function to search an IP by ID
 const getIPById = async (id) => {
     try {
-        const ipDetails = await contract.getIPDetails(id);
+        const bigNumberId = BigNumber.from(id); // convert to BigNumber
+        // console.log("ID inside getIPById (BigNumber):", bigNumberId);
+        // console.log("ID inside getIPById:", id);
+        const ipDetails = await contract.getIPDetails(bigNumberId);
+        // console.log("IP Details from smart contract:", ipDetails);
+//         console.log("creationDate:", ipDetails.dateOfCreation);
+// console.log("typeof creationDate:", typeof ipDetails.dateOfCreation);
+//         console.log("registrationDate:", ipDetails.dateOfRegistration);
+// console.log("typeof registrationDate:", typeof ipDetails.dateOfRegistration);
         if (!ipDetails) {
             return { error: "IP not found" };
         }
         return {
-            id: ipDetails.id,
+            id: ipDetails.index.toNumber(), // Convert BigNumber to integer
             name: ipDetails.name,
             description: ipDetails.description,
             owner: {
                 name: ipDetails.owner.name,
-                email: ipDetails.owner.email,
-                address: ipDetails.owner.address
+                email: ipDetails.owner.email,           
+                physicalAddress: ipDetails.owner.physicalAddress
             },
             ipType: ipDetails.ipType,
-            dateOfCreation: new Date(ipDetails.creationDate * 1000).toLocaleString(),
-            dateOfRegistration: new Date(ipDetails.registrationDate * 1000).toLocaleString(),
+            dateOfCreation: ipDetails.dateOfCreation,
+            dateOfRegistration: ipDetails.dateOfRegistration,
             license: ipDetails.license,
-            licenseIncentive: ipDetails.licenseIncentive,
+            licenseIncentive: ipDetails.licenseIncentive.toNumber(),
             tags: ipDetails.tags,
             optionalFields: ipDetails.optionalFields
         };
@@ -158,9 +166,11 @@ app.post("/register-ip", async (req, res) => {
         // Check for similarity before registering
         await checkDescriptionSimilarity(description);
 
-        // Using the total number of IPs as the new ID index
-        const id = await contract.getTotalIPs();
-
+          // Get total number of IPs as new ID
+        const idBigNumber = await contract.getTotalIPs();
+        const id = idBigNumber.toNumber(); // 👈 Convert to integer
+        console.log("New ID:", id);
+        
         const tx = await contract.registerIP(
             name, 
             description, 
@@ -216,15 +226,22 @@ app.get("/search-ip/:id", async (req, res) => {
     const { id } = req.params;
     const n = await contract.getTotalIPs();
     
+    // // Ensure the ID is a valid number
+    // if (isNaN(id) || id < 0 || id > n) {
+    //     return res.status(400)
+    //     .json({ error: "Invalid ID format" });
+    // }
+
+    try {
+
+    // console.log("ID inside search IP:", id);
     // Ensure the ID is a valid number
     if (isNaN(id) || id < 0 || id > n) {
         return res.status(400)
         .json({ error: "Invalid ID format" });
     }
-
-    try {
         const ip = await getIPById(id);
-
+        console.log("IP Details after passing through smart contract:", ip);
         // If the IP is not found, return a 404 error
         if (ip.error) {
             return res.status(404).json({ error: "IP not found" });
@@ -234,7 +251,7 @@ app.get("/search-ip/:id", async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "An error occurred while fetching IP details" });
-    }
+    } 
 });
 
 // Endpoint to search an IP by Keyword
@@ -265,6 +282,11 @@ app.post("/transfer-ownership", async (req, res) => {
         // Wait for the transaction to be mined
         await tx.wait();
 
+        await IntellectualProperty.findOneAndUpdate(
+    { index: id },
+    { owner: newOwnerDetails }
+);
+
         // Return the response with the new owner details
         res.status(200).json({ 
             message: "Ownership transferred successfully",
@@ -285,15 +307,20 @@ app.post("/transfer-ownership", async (req, res) => {
 // Route to pay incentive and access IP
 app.post("/access-ip", async (req, res) => {
     try {
+        const { id } = req.body;
         console.log(req.body);
-        const { id, incentiveAmount } = req.body;
-
         // Validate the input
-        if (!incentiveAmount) {
-            return res.status(400).json({ error: "ID and incentiveAmount are required" });
-        }
+        // if (!incentiveAmount) {
+        //     return res.status(400).json({ error: "ID and incentiveAmount are required" });
+        // }
 
         // Convert the incentive amount to Wei
+        const incentiveAmount = await contract.getLicenseIncentive(id);
+        console.log("Received ID:", id);
+        console.log("Incentive Amount:", incentiveAmount);
+        if (!incentiveAmount) {
+  return res.status(400).json({ error: "Incentive amount could not be retrieved" });
+}
         const value = ethers.utils.parseEther(incentiveAmount.toString());
 
         // Send the transaction with the value
@@ -325,11 +352,11 @@ app.get("/get-ips-by-owner/:ownerAddress", async (req, res) => {
 
         for (let i = 0; i < totalIPs; i++) { 
             const ipDetails = await contract.getIPDetails(i);
-            // Console.log("IP Details:", ipDetails);
+            // console.log("IP Details:", ipDetails);
             if (ipDetails.owner &&
     ipDetails.ownerAddress && ipDetails.ownerAddress.toLowerCase() === ownerAddress.toLowerCase()) {
                 ownedIPs.push({
-                    id: ipDetails.id,
+                    id: ipDetails.index.toNumber(),
                     name: ipDetails.name,
                     description: ipDetails.description,
                     ipType: ipDetails.ipType,
@@ -342,7 +369,7 @@ app.get("/get-ips-by-owner/:ownerAddress", async (req, res) => {
                 });
             }
         }
-
+         // console.log("Owned IPs:", ownedIPs);
         if (ownedIPs.length === 0) {
             return res.status(404).json({ error: "No IPs found for the given owner address" });
         }

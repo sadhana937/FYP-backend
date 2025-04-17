@@ -183,7 +183,11 @@ function grantAccess(uint256 index) public payable nonReentrant {
         }
         return ipList;
     }
-        
+
+    function getLicenseIncentive(uint256 index) public view returns (uint256) {
+        require(index < allIPIndexes.length, "IP does not exist");
+        return ips[index].licenseIncentive;
+    }   
     
 }
 
