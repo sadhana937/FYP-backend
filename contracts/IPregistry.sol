@@ -110,6 +110,10 @@ contract IPregistry is ReentrancyGuard {
     require(index < allIPIndexes.length, "IP does not exist");
     require(newOwner != address(0), "Invalid new owner");
 
+     // 🔐 Make sure the caller is the current owner
+    require(msg.sender == ips[index].ownerAddress, "Only the current owner can transfer ownership");
+
+
     // Remove IP from the current owner's list
     uint256[] storage ownerIPList = ownerToIPs[msg.sender];
     for (uint256 i = 0; i < ownerIPList.length; i++) {
@@ -122,6 +126,9 @@ contract IPregistry is ReentrancyGuard {
 
     // Add IP to the new owner's list
     ownerToIPs[newOwner].push(index);
+
+    // Update ownerAddress
+    ips[index].ownerAddress = newOwner;
 
     // Update owner details in the IP registry
     ips[index].owner = OwnerDetails({
@@ -143,6 +150,7 @@ function grantAccess(uint256 index) public payable nonReentrant {
 
     // Ensure the payment sent with the transaction is at least the required license incentive
     require(msg.value >= ip.licenseIncentive, "Insufficient payment");
+    require(msg.sender != ip.ownerAddress, "Owner cannot license their own IP"); // ✅ Self-licensing not allowed
 
     // Ensure the user does not already have access to this IP
     require(!hasAccess[index][msg.sender], "Already has access");
@@ -151,9 +159,9 @@ function grantAccess(uint256 index) public payable nonReentrant {
     hasAccess[index][msg.sender] = true;
 
     // Transfer the payment to the owner of the IP
-    address payable ownerAddress = payable(msg.sender); // This line should be corrected to transfer to the actual owner
+    address payable ownerAddress = payable(ip.ownerAddress); // This line should be corrected to transfer to the actual owner
     ownerAddress.transfer(msg.value);
-
+ 
     // Emit an event to log the access grant
     emit AccessGranted(index, msg.sender, msg.value);
 }
